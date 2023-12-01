@@ -42,6 +42,7 @@ fn main() {
             });
             // take the index of each number (AKA first character of the number word)
             // replace it with the number it corresponds to
+            // e.g eightwothree -> 8igh2wo3hree
             word_indexes.iter().for_each(|(index, value)| {
                 mutable_line.replace_range(index..&(index+1), value)
             });
