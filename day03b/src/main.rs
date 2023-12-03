@@ -6,6 +6,34 @@ struct SchematicMap {
     symbols: Vec<(char, u32)>,
     row_length: u32,
 }
+
+struct SymbolMap {
+    symbol: char,
+    index: u32,
+    // number, (start, end)
+    adjacent_numbers: Vec<(u32, (u32, u32))>,
+}
+
+impl std::fmt::Debug for SymbolMap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let adjacent_numbers: Vec<u32> = self.adjacent_numbers.iter().map(|(number, _)| *number).collect();
+        write!(f, "SymbolMap {{ symbol: {}, index: {}, adjacent_numbers: {:?} }}", self.symbol, self.index, adjacent_numbers)
+    }
+}
+
+impl SymbolMap {
+    fn new(symbol: char, index: u32) -> SymbolMap {
+        SymbolMap {
+            symbol,
+            index,
+            adjacent_numbers: Vec::new(),
+        }
+    }
+    fn add_number(&mut self, number: u32, start: u32, end: u32) {
+        self.adjacent_numbers.push((number, (start, end)));
+    }
+}
+
 impl SchematicMap {
     fn new() -> SchematicMap {
         SchematicMap {
@@ -15,12 +43,13 @@ impl SchematicMap {
         }
     }
 
-    fn get_numbers_adjacent_to_symbols(&self) -> Vec<u32> {
+    fn get_symbol_maps(&self) -> Vec<SymbolMap> {
         // number, start index
-        let mut adjacent_number_indexes: Vec<(u32, u32)> = Vec::new();
+        let mut symbol_maps: Vec<SymbolMap> = Vec::new();
         // Find all indexes adjacent to this symbol
         for (symbol, symbol_index) in &self.symbols {
             // println!("symbol: {} {}", symbol_index, symbol);
+            let mut map = SymbolMap::new(*symbol, *symbol_index);
             let symbol_index = *symbol_index as i32;
             let row_length = self.row_length as i32;
             let symbol_index_above = symbol_index - row_length;
@@ -57,22 +86,22 @@ impl SchematicMap {
                     // }
                     if let Some(_) = symbol_index_adjacent.iter().find(|i| *i == &idx ) {
                         // if the previous number is different, add this number
-                        if let Some((_, start_index)) = adjacent_number_indexes.last() {
+                        if let Some((_, (start_index, _))) = map.adjacent_numbers.last() {
                             // println!("prev_number: {} number: {}", prev_number, number);
                             if start_index != start {
-                                adjacent_number_indexes.push((*number, *start));
+                                map.adjacent_numbers.push((*number, (*start, *end)));
                             }
                         }  else {
-                            adjacent_number_indexes.push((*number, *start));
+                            map.adjacent_numbers.push((*number, (*start, *end)));
                         }
                     }
                 }
             }
-        
-                
+            symbol_maps.push(map);
         }
 
-        adjacent_number_indexes.iter().map(|(number, _)| *number).collect()
+        symbol_maps
+        // symbol_maps.iter().map(|(number, _)| *number).collect()
     }
 }
 
@@ -108,9 +137,22 @@ fn main() {
 
     // println!("{:?}", map.numbers);
     // println!("{:?}", map.symbols);
-    let result_numbers = map.get_numbers_adjacent_to_symbols();
-    // println!("{:?}", result_numbers);
+    let maps = map.get_symbol_maps();
+
+    // filter maps by those with exactly two adjacent numbers
+    let maps: Vec<SymbolMap> = maps.into_iter()
+        .filter(|map| map.symbol == '*')
+        .filter(|map| map.adjacent_numbers.len() == 2)
+        .collect();
+
+    println!("maps: {:?}", maps);
+
+    let ratios = maps.into_iter().map(|map| map.adjacent_numbers[0].0 * map.adjacent_numbers[1].0).collect::<Vec<u32>>();
+
+    println!("ratios {:?}", ratios);
+
+    println!("Result: {}", ratios.into_iter().sum::<u32>());
     // sum the numbers
-    let result: u32 = result_numbers.into_iter().sum();
-    println!("Result: {}", result);
+    // let result: u32 = result_numbers.into_iter().sum();
+    // println!("Result: {}", result);
 }
