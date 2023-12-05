@@ -1,4 +1,4 @@
-use std::{collections::btree_map::Range, time::Instant};
+use std::{collections::{btree_map::Range, HashMap, VecDeque}, time::Instant};
 
 use regex::Regex;
 
@@ -17,81 +17,86 @@ struct WinResult {
     matched: Vec<u32>,
 }
 
+struct RawCard {
+    id: u32,
+    winners: Option<usize>,
+}
+
 struct CardDuplicationSet {
-    cards: Vec<Card>,
+    cards: Vec<RawCard>,
 }
 
-impl CardDuplicationSet {
-    fn new(cards: Vec<Card>) -> CardDuplicationSet {
-        CardDuplicationSet { cards }
-    }
+// impl CardDuplicationSet {
+//     fn new(cards: Vec<Card>) -> CardDuplicationSet {
+//         CardDuplicationSet { cards: cards.iter().map(|card| RawCard { id: card.id, winners: card.get_ahead_card_count() }).collect() }
+//     }
 
-    fn get_first_unchecked_card(&self) -> Option<&Card> {
-        self.cards.iter().find(|card| !card.checked)
-    }
-    fn get_first_unchecked_card_mut(&mut self) -> Option<&mut Card> {
-        self.cards.iter_mut().find(|card| !card.checked)
-    }
+//     fn get_first_unchecked_card(&self) -> Option<&Card> {
+//         self.cards.iter().find(|card| !card.checked)
+//     }
+//     fn get_first_unchecked_card_mut(&mut self) -> Option<&mut Card> {
+//         self.cards.iter_mut().find(|card| !card.checked)
+//     }
 
-    fn get_first_card_by_id(&self, id: u32) -> &Card {
-        self.cards.iter().find(|card| card.id == id).unwrap()
-    }
+//     fn get_first_card_by_id(&self, id: u32) -> &Card {
+//         self.cards.iter().find(|card| card.id == id).unwrap()
+//     }
 
-    fn get_next_card_by_id(&self, range: std::ops::Range<u32>) -> Vec<&Card> {
-        let mut cards: Vec<&Card> = Vec::new();
-        for id in range {
-            cards.push(self.get_first_card_by_id(id));
-        }
-        cards
-    }
+//     fn get_next_card_by_id(&self, range: std::ops::Range<u32>) -> Vec<&Card> {
+//         let mut cards: Vec<&Card> = Vec::new();
+//         for id in range {
+//             cards.push(self.get_first_card_by_id(id));
+//         }
+//         cards
+//     }
 
-    fn get_duplicated_cards(&self, card: &Card) -> Option<Vec<Card>> {
-        let mut new_duplicated_cards: Vec<Card> = Vec::new();
+//     fn get_duplicated_cards(&self, card: &Card) -> Option<Vec<Card>> {
+//         let mut new_duplicated_cards: Vec<Card> = Vec::new();
 
-        if let Some(ahead) = card.get_ahead_card_count() {
-            let next_id = card.id + 1;
-            for next_card in self.get_next_card_by_id(next_id..next_id + ahead) {
-                new_duplicated_cards.push(next_card.clone())
-            }
-        }
+//         if let Some(ahead) = card.get_ahead_card_count() {
+//             let next_id = card.id + 1;
+//             for next_card in self.get_next_card_by_id(next_id..next_id + ahead) {
+//                 new_duplicated_cards.push(next_card.clone())
+//             }
+//         }
 
-        if new_duplicated_cards.len() == 0 {
-            return None;
-        }
-        Some(new_duplicated_cards)
-    }
+//         if new_duplicated_cards.len() == 0 {
+//             return None;
+//         }
+//         Some(new_duplicated_cards)
+//     }
 
-    fn insert_duplicated_cards(&mut self, cards: Vec<Card>) {
-        // Merge the cards into the existing set, in order of their ID
+//     fn insert_duplicated_cards(&mut self, cards: Vec<Card>) {
+//         // Merge the cards into the existing set, in order of their ID
 
-        // Find the index of the card with an id matching the first card in the new set
-        for new_card in cards {
-            let index = self
-                .cards
-                .iter()
-                .position(|card| card.id == new_card.id)
-                .unwrap();
-            self.cards.insert(index + 1, new_card);
-        }
+//         // Find the index of the card with an id matching the first card in the new set
+//         for new_card in cards {
+//             let index = self
+//                 .cards
+//                 .iter()
+//                 .position(|card| card.id == new_card.id)
+//                 .unwrap();
+//             self.cards.insert(index + 1, new_card);
+//         }
 
-    }
+//     }
 
-    // fn check_next_card(&mut self) -> Option<()> {
-    //     let mut new_cards: Vec<Card> = Vec::new();
-    //     if let Some(card) = self.get_first_unchecked_card() {
-    //         if let Some(ahead) = card.get_ahead_card_count() {
-    //             for next_card in self.get_next_card_by_id(card.id..card.id + ahead) {
-    //                 new_cards.push(next_card.clone())
-    //             }
-    //             // get next card by id
-    //             //
-    //         }
-    //         card.checked = true;
-    //         ()
-    //     }
-    //     None
-    // }
-}
+//     // fn check_next_card(&mut self) -> Option<()> {
+//     //     let mut new_cards: Vec<Card> = Vec::new();
+//     //     if let Some(card) = self.get_first_unchecked_card() {
+//     //         if let Some(ahead) = card.get_ahead_card_count() {
+//     //             for next_card in self.get_next_card_by_id(card.id..card.id + ahead) {
+//     //                 new_cards.push(next_card.clone())
+//     //             }
+//     //             // get next card by id
+//     //             //
+//     //         }
+//     //         card.checked = true;
+//     //         ()
+//     //     }
+//     //     None
+//     // }
+// }
 
 impl Card {
     fn new(id: u32) -> Card {
@@ -208,41 +213,74 @@ fn main() {
         // println!("card {:?}", card.get_winning_points());
     }
 
-    let mut dup_set = CardDuplicationSet::new(cards);
+    // let mut dup_set = CardDuplicationSet::new(cards);
 
-    let mut loader = "-";
+    // card_id, wins
+    let mut card_wins_map: HashMap<u32, Option<u32>> = HashMap::new();
+    // card_id
+    let mut card_queue: VecDeque<u32> = VecDeque::new();
 
-    loop {
-        if let Some(card) = dup_set.get_first_unchecked_card() {
-            println!("{} Processing Card {}", loader, card.id);
-            let new_cards = dup_set.get_duplicated_cards(card);
-            if let Some(new_cards) = new_cards {
-                // println!("NEW CARDS! {} | {:?}", card.id, new_cards);
-                dup_set.insert_duplicated_cards(new_cards);
+    // cards.iter().map(|card| RawCard { id: card.id, winners: card.get_ahead_card_count() }).collect();
+    cards.iter().for_each(|card| {
+        card_wins_map.insert(card.id, card.get_ahead_card_count());
+        card_queue.push_back(card.id);
+        ()
+    });
+
+    let mut total: u32 = card_queue.len() as u32;
+
+    while card_queue.front().is_some() {
+        let card_id = card_queue.pop_front().unwrap();
+        if let Some(ahead) = card_wins_map.get(&card_id).unwrap() {
+            for next_card_id in card_id + 1..=card_id + ahead {
+                // println!("{} -> {}", card_id, next_card_id);
+                card_queue.push_back(next_card_id);
+                total += 1;
             }
-        }
-
-        if let Some(card) = dup_set.get_first_unchecked_card_mut() {
-            card.checked = true;
-
-            if loader == "-" {
-                loader = "\\"
-            } else if loader == "\\" {
-                loader = "|"
-            } else if loader == "|" {
-                loader = "/"
-            } else if loader == "/" {
-                loader = "-"
-            }
-        } else {
-            break;
         }
     }
 
-    println!("Total cards in set: {}", dup_set.cards.len());
+    println!("Total cards in set: {}", total);
+
+    // fn get_subtree_wins(card_id: u32, card_map: HashMap<u32, RawCard>) {
+    //     for card in cards {
+    //         card_map
+    //     }
+    // }
+
+    // let mut loader = "-";
+
+    // loop {
+    //     if let Some(card) = dup_set.get_first_unchecked_card() {
+    //         println!("{} Processing Card {}", loader, card.id);
+    //         let new_cards = dup_set.get_duplicated_cards(card);
+    //         if let Some(new_cards) = new_cards {
+    //             // println!("NEW CARDS! {} | {:?}", card.id, new_cards);
+    //             dup_set.insert_duplicated_cards(new_cards);
+    //         }
+    //     }
+
+    //     if let Some(card) = dup_set.get_first_unchecked_card_mut() {
+    //         card.checked = true;
+
+    //         if loader == "-" {
+    //             loader = "\\"
+    //         } else if loader == "\\" {
+    //             loader = "|"
+    //         } else if loader == "|" {
+    //             loader = "/"
+    //         } else if loader == "/" {
+    //             loader = "-"
+    //         }
+    //     } else {
+    //         break;
+    //     }
+    // }
+
+    // println!("Total cards in set: {}", dup_set.cards.len());
     
     let duration = start.elapsed();
-    println!("Time elapsed was: {:?}", duration);
+    println!("Time elapsed in seconds: {:?}", duration.as_secs_f64());
 
     // loop over cards
     // if
