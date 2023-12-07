@@ -36,6 +36,8 @@ touch input.txt
 
 cargo init
 
+cargo add --path ../aoc-crate
+
 code-insiders src/main.rs
 
 code-insiders input.txt
