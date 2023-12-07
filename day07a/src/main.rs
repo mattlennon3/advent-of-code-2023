@@ -71,7 +71,11 @@ impl Hand {
         Hand { cards, bid }
     }
 
+    // https://old.reddit.com/r/adventofcode/comments/18cr4xr/2023_day_7_better_example_input_not_a_spoiler/
     fn get_hand_type(&self) -> HandType {
+
+        // the problem is when jokers are the highest count card
+
         let mut card_counts: HashMap<Card, u32> = HashMap::new();
         for card in self.cards.iter() {
             let count = card_counts.entry(card.clone()).or_insert(0);
@@ -84,9 +88,14 @@ impl Hand {
 
         // J cards are jokers - wildcards that can act like whatever card would make the hand the strongest type possible
         let joker_count = self.cards.iter().filter(|card| **card == Card::J).count() as u32;
+        let max_count = counts.iter().max().unwrap();
+        let amount_of_twos = counts.iter().filter(|count| **count == 2).count() as u32;
 
         println!("hand: {:?}, joker_count: {} counts: {:?}", self, joker_count, counts);
-        if joker_count > 0 {
+        if joker_count > 0 && joker_count < 5 {
+            // if joker_count == 2 && amount_of_twos == 1 {
+                
+            // }
             if let Some(last) = counts.last_mut() {
                 *last += joker_count;
             }
