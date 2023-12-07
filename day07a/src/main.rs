@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 #[derive(Eq, PartialEq, Hash, Clone, PartialOrd)]
 enum Card {
+    J,
     N2,
     N3,
     N4,
@@ -11,7 +12,6 @@ enum Card {
     N8,
     N9,
     T,
-    J,
     Q,
     K,
     A
@@ -79,7 +79,33 @@ impl Hand {
         }
 
         let mut counts: Vec<u32> = card_counts.values().map(|count| *count).collect();
+        
         counts.sort();
+
+        // J cards are jokers - wildcards that can act like whatever card would make the hand the strongest type possible
+        let joker_count = self.cards.iter().filter(|card| **card == Card::J).count() as u32;
+
+        println!("hand: {:?}, joker_count: {} counts: {:?}", self, joker_count, counts);
+        if joker_count > 0 {
+            if let Some(last) = counts.last_mut() {
+                *last += joker_count;
+            }
+
+            // while total of counts is greater than 5, remove smallest value from counts
+            while counts.iter().sum::<u32>() > 5 {
+                // remove smallest value from counts
+                // first value is always the smallest because it's been sorted
+                if let Some(first) = counts.first_mut() {
+                    *first -= 1;
+                }
+                if counts.first() == Some(&0) {
+                    counts.remove(0);
+                }
+            }
+            println!("new counts: {:?}", counts);
+        }
+
+        println!("hand: {:?}, joker_count: {} counts: {:?}\n", self, joker_count, counts);
 
         match counts.as_slice() {
             [1, 1, 1, 1, 1] => HandType::HighCard,
@@ -98,6 +124,21 @@ impl std::fmt::Debug for Hand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let cards_str: Vec<String> = self.cards.iter().map(|card| format!("{:?}", card)).collect();
         write!(f, "{} {}", cards_str.join(""), self.bid)
+    }
+}
+
+impl std::fmt::Debug for HandType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let label = match self {
+            HandType::HighCard => "HighCard",
+            HandType::OnePair => "OnePair",
+            HandType::TwoPair => "TwoPair",
+            HandType::ThreeOfAKind => "ThreeOfAKind",
+            HandType::FullHouse => "FullHouse",
+            HandType::FourOfAKind => "FourOfAKind",
+            HandType::FiveOfAKind => "FiveOfAKind",
+        };
+        write!(f, "{}", label)
     }
 }
 
@@ -142,8 +183,6 @@ impl Game {
         If they differ, the hand with the higher second card wins; otherwise, continue with the third card in each hand, then the fourth, then the fifth.
      */
     fn order_hands(&mut self) {
-
-        // let mut hands: Vec<Hand> = self.hands.iter().map(|hand| hand.clone()).collect();
         self.hands.sort_by(|phand, nhand| {
             let phand_type = phand.get_hand_type();
             let nhand_type = nhand.get_hand_type();
@@ -154,22 +193,8 @@ impl Game {
                     }
                 }
             }
-
             phand_type.partial_cmp(&nhand_type).unwrap()
         });
-
-
-        // self.hands.sort_by(|phand, nhand| {
-        //     let phand_type = phand.get_hand_type();
-        //     let nhand_type = nhand.get_hand_type();
-        //     if phand_type == nhand_type {
-        //         for i in 0..5 {
-        //             phand.cards[i] < nhand.cards[i]
-        //         }
-        //     }
-
-        //     phand < nhand
-        // });
     }
 }
 
@@ -190,7 +215,8 @@ fn main() {
     let mut rank = 1;
     let mut total = 0;
     for hand in game.hands {
-        println!("{:?}", hand);
+        println!("-------------------");
+        println!("({}) {}: {:?} {:?}\n", hand.bid * rank, rank, hand, hand.get_hand_type());
         total += hand.bid * rank;
         rank += 1;
     }
