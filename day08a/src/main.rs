@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Instant};
 
 enum Directions {
     LEFT,
@@ -36,9 +36,9 @@ impl NetworkNavigation {
         lookup_map: &HashMap<&str, NetworkMapLookupPtr>,
         direction_map: &Vec<CamelMap>,
     ) {
-        println!("lookup_map {:?}", lookup_map);
+        // println!("lookup_map {:?}", lookup_map);
         for map in direction_map {
-            println!("left '{}', right '{}'", map.left_str.as_str(), map.right_str.as_str());
+            // println!("left '{}', right '{}'", map.left_str.as_str(), map.right_str.as_str());
             let lookup_ptr = lookup_map.get(map.lookup_str.as_str()).expect("Pointer not found");
             let left_ptr = lookup_map
                 .get(map.left_str.as_str())
@@ -51,24 +51,30 @@ impl NetworkNavigation {
         }
     }
 
-    fn navigate(&self, start_ptr: &NetworkMapLookupPtr) -> u32 {
+    fn navigate(&self, start_ptr: &NetworkMapLookupPtr, end_ptr: &NetworkMapLookupPtr) -> u32 {
         let mut count = 0;
         let mut current_ptr = start_ptr;
-        // TODO: WHILE LOOP, as you can go through the LR pattern multiple times
-        // TODO: BREAK/END at ZZZ
-        for direction in self.lr_pattern.iter() {
-            match direction {
-                Directions::LEFT => {
-                    current_ptr = &self.maps.get(current_ptr).unwrap().0;
-                },
-                Directions::RIGHT => {
-                    current_ptr = &self.maps.get(current_ptr).unwrap().1;
+        let mut pattern = self.lr_pattern.iter();
 
+        loop {
+            if let Some(direction) = pattern.next() {
+                match direction {
+                    Directions::LEFT => {
+                        current_ptr = &self.maps.get(current_ptr).unwrap().0;
+                    },
+                    Directions::RIGHT => {
+                        current_ptr = &self.maps.get(current_ptr).unwrap().1;
+                    }
                 }
+                count += 1;
+            } else {
+                // restart the pattern if we run out
+                pattern = self.lr_pattern.iter();
             }
-            count += 1;
+            if current_ptr == end_ptr {
+                break;
+            }
         }
-
         count
     }
 }
@@ -83,6 +89,8 @@ struct CamelMap {
 }
 
 fn main() {
+    let start = Instant::now();
+
     let file_input = include_str!("../input.txt");
     let mut lr_str = "";
     let mut maps: Vec<CamelMap> = Vec::new();
@@ -118,10 +126,12 @@ fn main() {
     let mut navigation = NetworkNavigation::new(lr_str);
     navigation.build_maps(&lookup_ptr_map, &maps);
 
-    // TODO: Start from AAA
-    let first_ptr = lookup_ptr_map.get(maps.first().unwrap().lookup_str.as_str()).unwrap();
+    // Start from AAA
+    let first_ptr = lookup_ptr_map.get("AAA").unwrap();
+    let end_ptr = lookup_ptr_map.get("ZZZ").unwrap();
 
-    let count = navigation.navigate(first_ptr);
+    let count = navigation.navigate(first_ptr, end_ptr);
     println!("Navigation steps: {}", count);
-
+    let duration = start.elapsed();
+    println!("{:?}s", duration.as_secs_f64());
 }
