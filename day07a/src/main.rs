@@ -75,6 +75,10 @@ impl Hand {
     fn get_hand_type(&self) -> HandType {
 
         // the problem is when jokers are the highest count card
+        // TODO: don't do joker sorting here. Before this, create a new temp hand and replace the jokers
+        // with the best cards.
+        // Then pass to this function.
+        // remove joker count code etc
 
         let mut card_counts: HashMap<Card, u32> = HashMap::new();
         for card in self.cards.iter() {

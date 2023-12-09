@@ -147,6 +147,7 @@ fn main() {
     // let ran = 0..100000;
     // ran.contains(item);
 
+    // TODO: Try i32 not u32
 
     for input in file_input.lines() {
         if line_includes(input, "-to-") {
