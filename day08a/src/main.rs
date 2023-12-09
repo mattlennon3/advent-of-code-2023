@@ -51,7 +51,7 @@ impl NetworkNavigation {
         }
     }
 
-    fn navigate(&self, start_ptr: &NetworkMapLookupPtr, end_ptr: &NetworkMapLookupPtr) -> u32 {
+    fn navigate(&self, start_ptr: &NetworkMapLookupPtr, end_ptrs: Vec<&NetworkMapLookupPtr>) -> u32 {
         let mut count = 0;
         let mut current_ptr = start_ptr;
         let mut pattern = self.lr_pattern.iter();
@@ -71,12 +71,67 @@ impl NetworkNavigation {
                 // restart the pattern if we run out
                 pattern = self.lr_pattern.iter();
             }
-            if current_ptr == end_ptr {
+            if end_ptrs.contains(&current_ptr) {
                 break;
             }
         }
         count
     }
+
+    fn get_shared_lcm(&self, counts: Vec<u32>) -> u32 {
+        // lcm(a,b,c) = lcm(a,lcm(b,c))
+    }
+
+    /**
+     * Run through the navigation, navigating each start_ptr at the same time.
+     * If there is a moment when all current ptrs are in the set of end_ptrs, return steps
+     */
+    fn group_navigate(&self, start_ptrs: Vec<&NetworkMapLookupPtr>, end_ptrs: Vec<&NetworkMapLookupPtr>) -> u32 {
+        let mut count = 0;
+        let mut current_ptrs = start_ptrs;
+        let mut pattern = self.lr_pattern.iter();
+        
+        loop {
+            if let Some(direction) = pattern.next() {
+                
+                let mut routes: Vec<Box<dyn FnMut()>> = Vec::new();
+                for ptr in &mut current_ptrs {
+                    routes.push(Box::new(|| 
+                        match direction {
+                            Directions::LEFT => {
+                                *ptr = &&self.maps.get(ptr).unwrap().0;
+                            },
+                            Directions::RIGHT => {
+                                *ptr = &&self.maps.get(ptr).unwrap().1;
+                            }
+                        }));
+                }
+                
+                for closure in &mut routes {
+                    closure();
+                }
+                
+                count += 1;
+            } else {
+                // restart the pattern if we run out
+                pattern = self.lr_pattern.iter();
+            }
+
+            // if all current_ptrs are in the end_ptrs, break
+            let mut all_at_end = true;
+            for ptr in &current_ptrs {
+                if !end_ptrs.contains(ptr) {
+                    all_at_end = false;
+                }
+            }
+            if all_at_end {
+                break;
+            }
+        }
+
+        count
+    }
+    
 }
 
 struct CamelMap {
@@ -126,12 +181,36 @@ fn main() {
     let mut navigation = NetworkNavigation::new(lr_str);
     navigation.build_maps(&lookup_ptr_map, &maps);
 
+    // part 1
     // Start from AAA
     let first_ptr = lookup_ptr_map.get("AAA").unwrap();
     let end_ptr = lookup_ptr_map.get("ZZZ").unwrap();
+    let mut end_ptrs: Vec<&NetworkMapLookupPtr> = Vec::new();
+    end_ptrs.push(end_ptr);
 
-    let count = navigation.navigate(first_ptr, end_ptr);
-    println!("Navigation steps: {}", count);
+    let count = navigation.navigate(first_ptr, end_ptrs);
+    println!("Part 1: Navigation steps: {}", count);
+    let duration = start.elapsed();
+    println!("{:?}s", duration.as_secs_f64());
+
+    // part 2
+
+    // get all nodes ending in A:
+    let start_ptrs: Vec<&NetworkMapLookupPtr> = lookup_ptr_map.iter().filter(|(key, _)| key.ends_with("A")).map(|(_, value)| value).collect();
+    // get all nodes ending in Z:
+    let end_ptrs: Vec<&NetworkMapLookupPtr> = lookup_ptr_map.iter().filter(|(key, _)| key.ends_with("Z")).map(|(_, value)| value).collect();
+
+    let mut counts: Vec<u32> = Vec::new();
+
+    for ptr in start_ptrs {
+        let count = navigation.navigate(ptr, end_ptrs);
+        counts.push(count);
+    }
+
+    let result = navigation.get_shared_lcm(counts);
+
+    // let count = navigation.group_navigate(start_ptrs, end_ptrs);
+    println!("Part 2: Navigation result: {}", result);
     let duration = start.elapsed();
     println!("{:?}s", duration.as_secs_f64());
 }
