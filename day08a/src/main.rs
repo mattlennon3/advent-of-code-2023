@@ -1,5 +1,5 @@
 use std::{collections::HashMap, time::Instant};
-
+use num::integer::lcm;
 enum Directions {
     LEFT,
     RIGHT,
@@ -51,7 +51,7 @@ impl NetworkNavigation {
         }
     }
 
-    fn navigate(&self, start_ptr: &NetworkMapLookupPtr, end_ptrs: Vec<&NetworkMapLookupPtr>) -> u32 {
+    fn navigate(&self, start_ptr: &NetworkMapLookupPtr, end_ptrs: &Vec<&NetworkMapLookupPtr>) -> u32 {
         let mut count = 0;
         let mut current_ptr = start_ptr;
         let mut pattern = self.lr_pattern.iter();
@@ -78,8 +78,14 @@ impl NetworkNavigation {
         count
     }
 
-    fn get_shared_lcm(&self, counts: Vec<u32>) -> u32 {
+    fn get_shared_lcm(&self, counts: Vec<u64>) -> u64 {
         // lcm(a,b,c) = lcm(a,lcm(b,c))
+        let mut result = counts[0];
+        for count in counts {
+            println!("result {}, count {}", result, count);
+            result = lcm(count, result);
+        }
+        result
     }
 
     /**
@@ -188,7 +194,7 @@ fn main() {
     let mut end_ptrs: Vec<&NetworkMapLookupPtr> = Vec::new();
     end_ptrs.push(end_ptr);
 
-    let count = navigation.navigate(first_ptr, end_ptrs);
+    let count = navigation.navigate(first_ptr, &end_ptrs);
     println!("Part 1: Navigation steps: {}", count);
     let duration = start.elapsed();
     println!("{:?}s", duration.as_secs_f64());
@@ -200,11 +206,11 @@ fn main() {
     // get all nodes ending in Z:
     let end_ptrs: Vec<&NetworkMapLookupPtr> = lookup_ptr_map.iter().filter(|(key, _)| key.ends_with("Z")).map(|(_, value)| value).collect();
 
-    let mut counts: Vec<u32> = Vec::new();
+    let mut counts: Vec<u64> = Vec::new();
 
     for ptr in start_ptrs {
-        let count = navigation.navigate(ptr, end_ptrs);
-        counts.push(count);
+        let count = navigation.navigate(ptr, &end_ptrs);
+        counts.push(count as u64);
     }
 
     let result = navigation.get_shared_lcm(counts);
